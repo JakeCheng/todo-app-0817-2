@@ -3,11 +3,11 @@ server:
 
 spring:
   datasource:
-    # MySQL 连接：支持通过环境变量注入，未设置时回退到本地默认值
-    # 部署到 Railway 时，设置 DB_URL / DB_USERNAME / DB_PASSWORD
-    url: ${DB_URL:jdbc:mysql://localhost:3306/todo_db?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true}
-    username: ${DB_USERNAME:admin}
-    password: ${DB_PASSWORD:}
+    # MySQL 连接：Railway MySQL 插件会自动注入 MYSQLHOST/MYSQLPORT/MYSQLDATABASE/MYSQLUSER/MYSQLPASSWORD
+    # 本地开发未设置时回退到 localhost 默认值
+    url: jdbc:mysql://${MYSQLHOST:localhost}:${MYSQLPORT:3306}/${MYSQLDATABASE:todo_db}?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: ${MYSQLUSER:admin}
+    password: ${MYSQLPASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     # 自动建表
