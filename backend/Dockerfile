@@ -1,32 +1,37 @@
-# ====== 阶段1: 构建 ======
-# 使用 Maven 镜像编译源码（源码兼容 JDK 1.8，用 JDK 17 构建完全兼容）
-FROM maven:3.8-eclipse-temurin-17 AS builder
+# ======================================================================
+# Todo 后端 Docker 镜像（Railway 部署用）
+# 多阶段构建：构建层(Maven + Temurin JDK) + 运行层(Temurin JRE)
+# 关键：必须用 eclipse-temurin 镜像，openjdk 官方镜像已被 Docker Hub 下架
+# ======================================================================
+
+# ---------- 阶段 1:构建 ----------
+FROM maven:3.9.6-eclipse-temurin-17 AS builder
 
 WORKDIR /build
 
-# 先单独复制 pom.xml，利用 Docker 缓存加速依赖下载
+# 先只复制 pom.xml,缓存依赖层(加速重复构建)
 COPY pom.xml .
-RUN mvn dependency:go-offline -B
+RUN mvn -B -q dependency:go-offline
 
-# 复制源码并编译打包，跳过测试
+# 复制源码并打包(跳过测试加速)
 COPY src ./src
-RUN mvn clean package -DskipTests
+RUN mvn -B -DskipTests clean package
 
-# ====== 阶段2: 运行 ======
-# 运行时只需要 JRE，镜像更小
+# ---------- 阶段 2:运行 ----------
 FROM eclipse-temurin:17-jre
-
-LABEL maintainer="todo-backend"
 
 WORKDIR /app
 
-# 从构建阶段复制产物
-COPY --from=builder /build/target/todo-backend.jar app.jar
+# 从构建阶段复制生成的 jar(通配符兼容版本号变化)
+COPY --from=builder /build/target/todo-backend-*.jar /app/app.jar
 
 # 时区设置
 ENV TZ=Asia/Shanghai
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
+# Railway 会注入 PORT 环境变量
+# application.yml 中已配置 server.port=${SERVER_PORT:8080}
 EXPOSE 8080
 
-ENTRYPOINT ["java", "-jar", "/app/app.jar"]
+# JVM 容器化参数:适配 Railway 容器内存
+ENTRYPOINT ["java", "-XX:+UseContainerSupport", "-XX:MaxRAMPercentage=75.0", "-jar", "app.jar"]
